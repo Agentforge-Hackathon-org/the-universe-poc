@@ -1,4 +1,6 @@
 import asyncio
+import random
+
 import websockets
 import threading
 
@@ -17,11 +19,12 @@ async def send_messages(websocket, loop):
 async def receive_messages(websocket):
     while True:
         response = await websocket.recv()
-        print(f"Received from server: {response}")
+        print(f"\n{response}")
+        print("> ", end="", flush=True)
 
 
 def start_client(loop):
-    uri = "ws://127.0.0.1:8000/ws"
+    uri = f"ws://127.0.0.1:8000/ws/abc-{random.randint(0, 5000)}"
 
     async def handle_connection():
         async with websockets.connect(uri) as websocket:

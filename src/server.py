@@ -46,16 +46,16 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
+@app.websocket("/ws/{username}")
+async def websocket_endpoint(websocket: WebSocket, username: str):
     await manager.connect(websocket)
     try:
         while True:
             data = await websocket.receive_text()
-            await manager.broadcast(f"Client says: {data}")
+            await manager.broadcast(f"{username}: {data}", sender=websocket)
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
-        await manager.broadcast("A client has left the chat.")
+        await manager.disconnect(websocket)
+        await manager.broadcast(f"{username} has left the chat.")
 
 
 @app.post("/broadcast")
