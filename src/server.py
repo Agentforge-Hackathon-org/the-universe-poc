@@ -24,21 +24,24 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             message = await websocket.receive_text()
 
-            processed_message = f"You sent: {message}"
+            processed_message = f"Client {client_id} sent: {message}"
 
-            await websocket.send_text(processed_message)
+            # Broadcast the message to all clients except the sender
+            await broadcast(processed_message, sender_id=client_id)
     except WebSocketDisconnect:
         async with lock:
             del connected_clients[client_id]
 
 
-async def broadcast(message: str):
+async def broadcast(message: str, sender_id: int | None):
     disconnected_clients = []
     for client_id, client in connected_clients.items():
-        try:
-            await client.send_text(message)
-        except WebSocketDisconnect:
-            disconnected_clients.append(client_id)
+        # Don't send the message to the sender
+        if client_id != sender_id:
+            try:
+                await client.send_text(message)
+            except WebSocketDisconnect:
+                disconnected_clients.append(client_id)
 
     if disconnected_clients:
         async with lock:
@@ -48,7 +51,7 @@ async def broadcast(message: str):
 
 @app.post("/broadcast")
 async def broadcast_message(message: str):
-    await broadcast(message)
+    await broadcast(message, sender_id=None)
     return {"message": "Message broadcasted"}
 
 
