@@ -4,57 +4,66 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
 app = FastAPI()
 
-connected_clients: dict[int, WebSocket] = {}
-client_id_counter: int = 0
 lock = asyncio.Lock()
+
+
+class ConnectionManager:
+    def __init__(self):
+        self._connected_clients: set[WebSocket] = set()
+
+    def total_clients(self) -> int:
+        return len(self._connected_clients)
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        async with lock:
+            self._connected_clients.add(websocket)
+
+    async def disconnect(self, websocket: WebSocket):
+        async with lock:
+            self._connected_clients.remove(websocket)
+
+    async def send_personal_message(self, message: str, websocket: WebSocket):
+        await websocket.send_text(message)
+
+    async def broadcast(self, message: str, sender: WebSocket | None = None):
+        disconnected_clients = set()
+
+        for client in self._connected_clients:
+            # Don't send the message to the sender
+            if client != sender:
+                try:
+                    await client.send_text(message)
+                except WebSocketDisconnect:
+                    disconnected_clients.add(client)
+
+        if disconnected_clients:
+            async with lock:
+                for client in disconnected_clients:
+                    self._connected_clients.remove(client)
+
+
+manager = ConnectionManager()
 
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    global client_id_counter
-
-    await websocket.accept()
-
-    async with lock:
-        client_id = client_id_counter
-        connected_clients[client_id] = websocket
-        client_id_counter += 1
-
+    await manager.connect(websocket)
     try:
         while True:
-            message = await websocket.receive_text()
-
-            processed_message = f"Client {client_id} sent: {message}"
-
-            # Broadcast the message to all clients except the sender
-            await broadcast(processed_message, sender_id=client_id)
+            data = await websocket.receive_text()
+            await manager.broadcast(f"Client says: {data}")
     except WebSocketDisconnect:
-        async with lock:
-            del connected_clients[client_id]
-
-
-async def broadcast(message: str, sender_id: int | None):
-    disconnected_clients = []
-    for client_id, client in connected_clients.items():
-        # Don't send the message to the sender
-        if client_id != sender_id:
-            try:
-                await client.send_text(message)
-            except WebSocketDisconnect:
-                disconnected_clients.append(client_id)
-
-    if disconnected_clients:
-        async with lock:
-            for client_id in disconnected_clients:
-                del connected_clients[client_id]
+        manager.disconnect(websocket)
+        await manager.broadcast("A client has left the chat.")
 
 
 @app.post("/broadcast")
 async def broadcast_message(message: str):
-    await broadcast(message, sender_id=None)
+    await manager.broadcast(message)
     return {"message": "Message broadcasted"}
 
 
 @app.get("/connected-clients")
 async def get_connected_clients():
-    return {"connected_clients": len(connected_clients)}
+    return {"connected_clients": manager.total_clients()}
