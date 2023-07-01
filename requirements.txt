@@ -1,1 +1,2 @@
-fastapi~=0.99.0
+fastapi[all]~=0.99.0
+websockets~=11.0.3

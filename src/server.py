@@ -31,8 +31,6 @@ async def websocket_endpoint(websocket: WebSocket):
         async with lock:
             del connected_clients[client_id]
 
-        await websocket.close()
-
 
 async def broadcast(message: str):
     disconnected_clients = []
