@@ -3,7 +3,7 @@ import { useSession } from "next-auth/react";
 import { Header } from "@/components/header";
 import { MessageList } from "@/components/message-list";
 import { NewMessageForm } from "@/components/new-message-form";
-import ImageComponent from "@/components/image";
+import ImageComponent from "@/components/image-component";
 
 export default function Home() {
   const { data: session, status } = useSession();

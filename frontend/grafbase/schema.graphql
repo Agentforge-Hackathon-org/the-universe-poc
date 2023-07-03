@@ -14,4 +14,5 @@ type Message @model {
   body: String!
   likes: Int @default(value: 0)
   dislikes: Int @default(value: 0)
+  timestamp: DateTime! 
 }
