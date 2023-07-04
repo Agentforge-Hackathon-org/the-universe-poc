@@ -24,7 +24,7 @@ update_scene = {
 }
 
 
-async def ai21_complete(api_key: str, prompt: str):
+def ai21_complete(api_key: str, prompt: str):
     ai21.api_key = api_key
     response = ai21.Completion.execute(
         model="j2-ultra",
@@ -59,7 +59,7 @@ async def ai21_custom_complete(api_key: str, prompt: str):
 async def get_narrative_update(api_key: str, prompt: str):
     openai.api_key = api_key
 
-    completion = openai.ChatCompletion.create(
+    completion = await openai.ChatCompletion.acreate(
         model="gpt-3.5-turbo",
         messages=[
             {"role": "system",
