@@ -77,7 +77,14 @@ async def generate_scene(prompt):
     return await llm.claude_complete(ANTHROPIC_API_KEY, prompt)
 
 
-def narrate(scene):
+async def update_scene(scene, changes):
+    changes = "\n".join(changes)
+    prompt = f"Here is the current scene: {scene}.\n" \
+             f"Please update the scene given these changes: {changes}"
+    return await llm.claude_complete(ANTHROPIC_API_KEY, prompt)
+
+
+def get_narration(scene):
     prompt = f"Here is the current scene: {scene}.\n" \
              f"Create some narration to help the characters understand what " \
              f"they need to do."
@@ -88,13 +95,6 @@ async def take_action(action):
     prompt = f"The user would like to take the following action: {action}.\n" \
              f"Based on the game rules, what happens next?"
     return await llm.get_narrative_update(OPENAI_API_KEY, prompt)
-
-
-def apply_scene_change(scene, changes):
-    changes = "\n".join(changes)
-    prompt = f"Here is the current scene: {scene}.\n" \
-             f"Please update the scene given these changes: {changes}"
-    return await llm.claude_complete(ANTHROPIC_API_KEY, prompt)
 
 
 @app.websocket("/chat/{username}")
@@ -115,14 +115,14 @@ async def chat_websocket(websocket: WebSocket, username: str):
             # start the game
             if not scene and "start the game" in data:
                 scene = await generate_scene(scene_prompt)
-                await manager.broadcast(f"Narrator: {narrate(scene)}")
+                await manager.broadcast(f"Narrator: {get_narration(scene)}")
                 continue
 
             # take an action
             if "I want to" in data:
                 result = await take_action(data)
-                scene = apply_scene_change(scene, result)
-                await manager.broadcast(f"Narrator: {narrate(scene)}")
+                scene = update_scene(scene, result)
+                await manager.broadcast(f"Narrator: {get_narration(scene)}")
                 continue
 
     except WebSocketDisconnect:
