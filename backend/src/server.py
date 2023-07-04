@@ -107,7 +107,7 @@ async def get_narration(scene: Scene):
 @app.post("/gm/evaluate")
 async def evaluate_action(action: Action):
     prompt = f"The user would like to take the following action: {action.action}.\n" \
-             f"Please check the rules to make sure this is possible."
+             f"Based on the game rules, what happens next?"
     response = llm.get_narrative_update(OPENAI_API_KEY, prompt)
     return {"result": response}
 
