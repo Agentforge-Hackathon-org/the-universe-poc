@@ -2,7 +2,6 @@ import asyncio
 import os
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from pydantic import BaseModel
 
 import llm
 
@@ -13,24 +12,6 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 app = FastAPI()
 
 lock = asyncio.Lock()
-
-
-class ScenePrompt(BaseModel):
-    prompt: str
-
-
-class Scene(BaseModel):
-    description: str
-
-
-class SceneUpdate(BaseModel):
-    scene: Scene
-    changes: list[str]
-
-
-class Action(BaseModel):
-    character: str
-    action: str
 
 
 class ConnectionManager:
@@ -70,7 +51,6 @@ class ConnectionManager:
 
 
 manager = ConnectionManager()
-event_manager = ConnectionManager()
 
 
 async def generate_scene(prompt):
