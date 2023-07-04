@@ -97,7 +97,7 @@ def apply_scene_change(scene, changes):
     return await llm.claude_complete(ANTHROPIC_API_KEY, prompt)
 
 
-@app.websocket("/chat/join/{username}")
+@app.websocket("/chat/{username}")
 async def chat_websocket(websocket: WebSocket, username: str):
     scene_prompt = "Describe a fantasy world"
     scene = ""
@@ -128,35 +128,3 @@ async def chat_websocket(websocket: WebSocket, username: str):
     except WebSocketDisconnect:
         await manager.disconnect(websocket)
         await manager.broadcast(f"{username} has left the chat.")
-
-
-@app.post("/chat/broadcast")
-async def broadcast_message(message: str):
-    await manager.broadcast(message)
-    return {"message": "Message broadcast to players"}
-
-
-@app.get("/chat/players")
-async def get_connected_clients():
-    return {"connected_clients": manager.total_clients()}
-
-
-@app.post("/gm/narration")
-async def get_narration(scene: Scene):
-    return {"narrative": narrate(scene.description)}
-
-
-@app.post("/gm/evaluate")
-async def evaluate_action(action: Action):
-    return {"result": await take_action(action.action)}
-
-
-@app.post("/storyteller/scene")
-async def create_scene(prompt: ScenePrompt):
-    return {"scene": await generate_scene(prompt.prompt)}
-
-
-@app.put("/storyteller/scene")
-async def update_scene(update: SceneUpdate):
-    response = await apply_scene_change(update.scene, update.scene.description)
-    return {"scene": response}
