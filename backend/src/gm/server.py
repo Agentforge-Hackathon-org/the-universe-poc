@@ -1,5 +1,10 @@
+import os
+
 from fastapi import FastAPI
 from pydantic import BaseModel
+
+AI21_API_KEY = os.environ.get("AI21_API_KEY")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
 app = FastAPI()
 
