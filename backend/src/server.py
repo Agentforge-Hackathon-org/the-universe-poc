@@ -72,7 +72,7 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
-@app.websocket("/ws/{username}")
+@app.websocket("/chat/join/{username}")
 async def websocket_endpoint(websocket: WebSocket, username: str):
     await manager.connect(websocket)
     try:
@@ -84,18 +84,18 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
         await manager.broadcast(f"{username} has left the chat.")
 
 
-@app.post("/broadcast")
+@app.post("/chat/broadcast")
 async def broadcast_message(message: str):
     await manager.broadcast(message)
     return {"message": "Message broadcasted"}
 
 
-@app.get("/connected-clients")
+@app.get("/chat/players")
 async def get_connected_clients():
     return {"connected_clients": manager.total_clients()}
 
 
-@app.post("/narrative")
+@app.post("/gm/narration")
 async def get_narration(scene: Scene):
     prompt = f"Here is the current scene: {scene.description}.\n" \
              f"Create some narration to help the characters understand what " \
@@ -104,7 +104,7 @@ async def get_narration(scene: Scene):
     return {"narrative": response}
 
 
-@app.post("/evaluate")
+@app.post("/gm/evaluate")
 async def evaluate_action(action: Action):
     prompt = f"The user would like to take the following action: {action.action}.\n" \
              f"Please check the rules to make sure this is possible."
@@ -112,13 +112,13 @@ async def evaluate_action(action: Action):
     return {"result": response}
 
 
-@app.post("/scene")
+@app.post("/storyteller/scene")
 async def create_scene(prompt: ScenePrompt):
     response = await llm.claude_complete(ANTHROPIC_API_KEY, prompt.prompt)
     return {"scene": response}
 
 
-@app.put("/scene")
+@app.put("/storyteller/scene")
 async def update_scene(update: SceneUpdate):
     changes = "\n".join(update.changes)
     prompt = f"Here is the current scene: {update.scene.description}.\n" \
