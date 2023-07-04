@@ -1,10 +1,36 @@
 import asyncio
+import os
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel
+
+import llm
+
+AI21_API_KEY = os.environ.get("AI21_API_KEY")
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
 app = FastAPI()
 
 lock = asyncio.Lock()
+
+
+class ScenePrompt(BaseModel):
+    prompt: str
+
+
+class Scene(BaseModel):
+    description: str
+
+
+class SceneUpdate(BaseModel):
+    scene: Scene
+    changes: list[str]
+
+
+class Action(BaseModel):
+    character: str
+    action: str
 
 
 class ConnectionManager:
@@ -67,3 +93,35 @@ async def broadcast_message(message: str):
 @app.get("/connected-clients")
 async def get_connected_clients():
     return {"connected_clients": manager.total_clients()}
+
+
+@app.post("/narrative")
+async def get_narration(scene: Scene):
+    prompt = f"Here is the current scene: {scene.description}.\n" \
+             f"Create some narration to help the characters understand what " \
+             f"they need to do."
+    response = llm.ai21_complete(AI21_API_KEY, prompt)
+    return {"narrative": response}
+
+
+@app.post("/evaluate")
+async def evaluate_action(action: Action):
+    prompt = f"The user would like to take the following action: {action.action}.\n" \
+             f"Please check the rules to make sure this is possible."
+    response = llm.gpt_complete(OPENAI_API_KEY, prompt)
+    return {"result": response}
+
+
+@app.post("/scene")
+async def create_scene(prompt: ScenePrompt):
+    response = await llm.claude_complete(ANTHROPIC_API_KEY, prompt.prompt)
+    return {"scene": response}
+
+
+@app.put("/scene")
+async def update_scene(update: SceneUpdate):
+    changes = "\n".join(update.changes)
+    prompt = f"Here is the current scene: {update.scene.description}.\n" \
+             f"Please update the scene given these changes: {changes}"
+    response = await llm.claude_complete(ANTHROPIC_API_KEY, prompt)
+    return {"scene": response}
