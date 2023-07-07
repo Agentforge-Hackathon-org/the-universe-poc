@@ -1,46 +1,28 @@
-import { gql, useMutation } from "@apollo/client";
-import { useSession } from "next-auth/react";
 import { useState } from "react";
 import useSound from "use-sound";
+import io from 'socket.io-client'
 
-const AddNewMessageMutation = gql`
-  mutation AddNewMessage($username: String!, $avatar: URL, $body: String!) {
-    messageCreate(
-      input: { username: $username, avatar: $avatar, body: $body }
-    ) {
-      message {
-        id
-      }
-    }
-  }
-`;
+const userid = "testingName"
+
+const socket = io(`http://localhost:5000/chat${userid}`);
 
 export const NewMessageForm = () => {
-  const { data: session } = useSession();
   const [play] = useSound("sent.wav");
   const [body, setBody] = useState("");
-  const [addNewMessage] = useMutation(AddNewMessageMutation, {
-    onCompleted: () => play(),
-  });
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    if (body) {
+      socket.emit('newMessage', {
+        body,
+      });
+      play();
+      setBody('');
+    }
+  }
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-
-        if (body) {
-          addNewMessage({
-            variables: {
-              username: session?.username ?? "",
-              avatar: session?.user?.image,
-              body,
-            },
-          });
-          setBody("");
-        }
-      }}
-      className="flex items-center space-x-3"
-    >
+    <form onSubmit={handleSubmit} className="flex items-center space-x-3">
       <input
         autoFocus
         id="message"
@@ -53,7 +35,7 @@ export const NewMessageForm = () => {
       <button
         type="submit"
         className="bg-[#222226] rounded h-12 font-medium text-white w-24 text-lg border border-transparent hover:bg-[#363739] transition"
-        disabled={!body || !session}
+        disabled={!body}
       >
         Send
       </button>

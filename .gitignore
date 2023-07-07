@@ -1,0 +1,5 @@
+backend/.env
+backend/.venv
+backend/.github
+backend/src/docs/**/*
+backend/src/__pycache__/**/*

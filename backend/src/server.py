@@ -2,6 +2,7 @@ import asyncio
 import os
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 
 import llm
 
@@ -11,29 +12,37 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
 app = FastAPI()
 
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 lock = asyncio.Lock()
 
 
 class ConnectionManager:
     def __init__(self):
-        self._connected_clients: set[WebSocket] = set()
+        self._connected_clients = set()
 
-    def total_clients(self) -> int:
+    def total_clients(self):
         return len(self._connected_clients)
 
-    async def connect(self, websocket: WebSocket):
+    async def connect(self, websocket):
         await websocket.accept()
         async with lock:
             self._connected_clients.add(websocket)
 
-    async def disconnect(self, websocket: WebSocket):
+    async def disconnect(self, websocket):
         async with lock:
             self._connected_clients.remove(websocket)
 
-    async def send_personal_message(self, message: str, websocket: WebSocket):
+    async def send_personal_message(self, message, websocket):
         await websocket.send_text(message)
 
-    async def broadcast(self, message: str, sender: WebSocket | None = None):
+    async def broadcast(self, message, sender=None):
         disconnected_clients = set()
 
         for client in self._connected_clients:
@@ -78,7 +87,7 @@ async def take_action(action):
 
 
 @app.websocket("/chat/{username}")
-async def chat_websocket(websocket: WebSocket, username: str):
+async def chat_websocket(websocket, username):
     scene_prompt = "Describe a fantasy world"
     scene = ""
     await manager.connect(websocket)
@@ -108,3 +117,29 @@ async def chat_websocket(websocket: WebSocket, username: str):
     except WebSocketDisconnect:
         await manager.disconnect(websocket)
         await manager.broadcast(f"{username} has left the chat.")
+
+
+@app.websocket('/getImageBlobLink')
+def handle_get_image_blob_link():
+    # Handle the request for the image link
+    # Retrieve the image link from your data source
+    image_blob_link = "https://example.com/image.jpg"
+
+    # Emit the imageBlobLink event with the link to the client
+    return ('imageBlobLink', image_blob_link)
+
+
+def handle_get_recent_messages(data):
+    # Handle the request for recent messages
+    #last_messages = data.get('last', 100)
+
+    # Retrieve the latest messages from your data source
+    messages = ["testing message list"]
+
+    # Emit the messages to the client
+    return ('recentMessages', messages)
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="localhost", port=5000)
